@@ -63,16 +63,8 @@ class AgentAccessibilityService : AccessibilityService() {
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val pkg = event.packageName?.toString()
             if (!pkg.isNullOrBlank()) {
-                AccessibilityEngineState.foregroundPackage = pkg
+                foregroundPackage = pkg
             }
         }
     }
 }
-
-// Extend state with foreground package tracking
-var AccessibilityEngineState.foregroundPackage: String?
-    get() = _foregroundPackage
-    set(v) { _foregroundPackage = v }
-
-@Volatile
-private var _foregroundPackage: String? = null

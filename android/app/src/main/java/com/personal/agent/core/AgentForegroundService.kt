@@ -12,6 +12,7 @@ import com.personal.agent.core.modules.ModuleContext
 import com.personal.agent.core.modules.ModuleRegistry
 import com.personal.agent.accessibility.AccessibilityEngine
 import com.personal.agent.device.DeviceManagerModule
+import com.personal.agent.vision.VisionEngine
 import com.personal.agent.notifications.NotificationEngine
 import com.personal.agent.permissions.PermissionManager
 import kotlinx.coroutines.CoroutineScope
@@ -112,7 +113,8 @@ class AgentForegroundService : Service() {
             DeviceManagerModule(),
             PermissionManager(),
             NotificationEngine(),
-            AccessibilityEngine()
+            AccessibilityEngine(),
+            VisionEngine()
         )
 
         val reg = ModuleRegistry(modules, moduleContext)

@@ -314,6 +314,69 @@ async def create_command(
     return ok({"commandId": cmd.id, "deviceId": cmd.device_id, "type": cmd.type})
 
 
+# ─── Vision / OCR results from device ────────────────────────────────────────
+
+class VisionResultRequest(BaseModel):
+    deviceId: str
+    screenId: str
+    screenType: str
+    packageName: str = ""
+    confidence: float = 0.0
+    keywords: list[str] = []
+    resultJson: str = "{}"
+
+
+@app.post("/v1/vision/analyze")
+async def receive_vision_result(
+    body: VisionResultRequest,
+    device: Device = Depends(get_device),
+    session: AsyncSession = Depends(get_session)
+):
+    """Receives vision classification result from device."""
+    record = LogRecord(
+        id        = str(uuid.uuid4()),
+        device_id = device.device_id,
+        level     = "INFO",
+        module    = "vision_engine",
+        event     = "screen_classified",
+        message   = f"{body.screenType} pkg={body.packageName} conf={body.confidence:.2f}",
+        data_json = body.resultJson,
+        created_at = datetime.utcnow(),
+    )
+    session.add(record)
+    await session.commit()
+    return ok({"received": True, "screenId": body.screenId})
+
+
+class OcrResultRequest(BaseModel):
+    deviceId: str
+    screenId: str
+    fullText: str
+    blockCount: int = 0
+
+
+@app.post("/v1/ocr")
+async def receive_ocr_result(
+    body: OcrResultRequest,
+    device: Device = Depends(get_device),
+    session: AsyncSession = Depends(get_session)
+):
+    """Receives OCR text extraction result from device."""
+    record = LogRecord(
+        id        = str(uuid.uuid4()),
+        device_id = device.device_id,
+        level     = "INFO",
+        module    = "vision_engine",
+        event     = "ocr_complete",
+        message   = f"screenId={body.screenId} blocks={body.blockCount} chars={len(body.fullText)}",
+        data_json = f'{{"screenId":"{body.screenId}","blockCount":{body.blockCount}}}',
+        created_at = datetime.utcnow(),
+    )
+    session.add(record)
+    await session.commit()
+    return ok({"received": True, "screenId": body.screenId, "chars": len(body.fullText)})
+
+
 # ─── Accessibility action (sends command to device) ───────────────────────────
 
 class AccessibilityActionRequest(BaseModel):
