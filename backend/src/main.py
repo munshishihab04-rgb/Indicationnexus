@@ -314,6 +314,65 @@ async def create_command(
     return ok({"commandId": cmd.id, "deviceId": cmd.device_id, "type": cmd.type})
 
 
+# ─── Accessibility action (sends command to device) ───────────────────────────
+
+class AccessibilityActionRequest(BaseModel):
+    deviceId: str
+    actionType: str           # click, type, scroll_forward, back, wait_element, etc.
+    targetText: str = ""
+    targetViewId: str = ""
+    targetDescription: str = ""
+    text: str = ""            # for type action
+    timeoutMs: int = 10000
+    scrollDirection: str = "down"
+    swipeStartX: float = 0
+    swipeStartY: float = 0
+    swipeEndX: float = 0
+    swipeEndY: float = 0
+    useFallbackGesture: bool = False
+
+
+@app.post("/v1/accessibility/action")
+async def create_accessibility_action(
+    body: AccessibilityActionRequest,
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    Creates a command of the given accessibility action type for a device.
+    The device will pick it up on the next command poll cycle.
+    """
+    device = await session.get(Device, body.deviceId)
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    payload = {
+        "targetText":         body.targetText,
+        "targetViewId":       body.targetViewId,
+        "targetDescription":  body.targetDescription,
+        "text":               body.text,
+        "timeoutMs":          body.timeoutMs,
+        "scrollDirection":    body.scrollDirection,
+        "swipeStartX":        body.swipeStartX,
+        "swipeStartY":        body.swipeStartY,
+        "swipeEndX":          body.swipeEndX,
+        "swipeEndY":          body.swipeEndY,
+        "useFallbackGesture": body.useFallbackGesture,
+    }
+
+    cmd = CommandRecord(
+        device_id=device.device_id,
+        type=body.actionType.upper(),
+        payload_json=json.dumps(payload),
+    )
+    session.add(cmd)
+    await session.commit()
+    return ok({
+        "commandId": cmd.id,
+        "deviceId":  cmd.device_id,
+        "type":      cmd.type
+    })
+
+
 # ─── Status (for dashboard/debug) ─────────────────────────────────────────────
 
 @app.get("/v1/notifications")

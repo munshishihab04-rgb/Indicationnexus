@@ -10,6 +10,7 @@ import com.personal.agent.core.db.AgentDatabase
 import com.personal.agent.core.logging.AgentLogger
 import com.personal.agent.core.modules.ModuleContext
 import com.personal.agent.core.modules.ModuleRegistry
+import com.personal.agent.accessibility.AccessibilityEngine
 import com.personal.agent.device.DeviceManagerModule
 import com.personal.agent.notifications.NotificationEngine
 import com.personal.agent.permissions.PermissionManager
@@ -110,7 +111,8 @@ class AgentForegroundService : Service() {
         val modules = setOf(
             DeviceManagerModule(),
             PermissionManager(),
-            NotificationEngine()
+            NotificationEngine(),
+            AccessibilityEngine()
         )
 
         val reg = ModuleRegistry(modules, moduleContext)
