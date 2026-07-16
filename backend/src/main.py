@@ -286,6 +286,34 @@ async def upload_logs(
     return ok({"received": len(body.logs)})
 
 
+# ─── Create command (from dashboard/admin) ────────────────────────────────────
+
+class CreateCommandRequest(BaseModel):
+    deviceId: str
+    type: str
+    payload: dict = {}
+
+
+@app.post("/v1/commands")
+async def create_command(
+    body: CreateCommandRequest,
+    session: AsyncSession = Depends(get_session)
+):
+    """Create a command for a device to execute. No device auth — admin endpoint."""
+    device = await session.get(Device, body.deviceId)
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    cmd = CommandRecord(
+        device_id=device.device_id,
+        type=body.type,
+        payload_json=json.dumps(body.payload),
+    )
+    session.add(cmd)
+    await session.commit()
+    return ok({"commandId": cmd.id, "deviceId": cmd.device_id, "type": cmd.type})
+
+
 # ─── Status (for dashboard/debug) ─────────────────────────────────────────────
 
 @app.get("/v1/status")

@@ -25,6 +25,6 @@ data class ModuleContext(
     val appContext: Context,
     val db: AgentDatabase,
     val logger: AgentLogger,
-    val configStore: ConfigStore,
+    val configStore: ConfigStore?,
     val scope: CoroutineScope
 )

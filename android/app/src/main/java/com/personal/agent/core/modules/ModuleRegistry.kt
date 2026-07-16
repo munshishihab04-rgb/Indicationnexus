@@ -53,7 +53,7 @@ class ModuleRegistry(
      * individual modules are caught and logged without affecting other modules.
      */
     suspend fun startEnabledModules() {
-        val config = context.configStore.getConfig() ?: run {
+        val config = context.configStore?.getConfig() ?: run {
             context.logger.warn(
                 module = "ModuleRegistry",
                 event = "start_enabled_skipped",
@@ -118,7 +118,7 @@ class ModuleRegistry(
      * and logged per module.
      */
     suspend fun stopDisabledModules() {
-        val config = context.configStore.getConfig()
+        val config = context.configStore?.getConfig()
         val moduleConfigs: Map<String, ModuleConfig> = if (config != null) {
             parseModuleConfigs(config.modulesJson)
         } else {

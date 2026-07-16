@@ -53,5 +53,6 @@ class AgentApp : Application() {
         const val WORK_LOG_UPLOAD      = "agent_log_upload"
         const val WORK_COMMAND_POLL    = "agent_command_poll"
         const val WORK_BOOT_RECOVERY   = "agent_boot_recovery"
+        const val WORK_CLEANUP         = "agent_cleanup"
     }
 }

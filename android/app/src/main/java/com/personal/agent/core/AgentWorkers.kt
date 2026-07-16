@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.personal.agent.BuildConfig
+import com.personal.agent.core.db.AgentDatabase
 import com.personal.agent.core.db.CommandEntity
 import com.personal.agent.core.db.ConfigEntity
 import com.personal.agent.core.network.AckRequest
@@ -260,11 +261,26 @@ class CommandPollWorker(ctx: Context, params: WorkerParameters) : CoroutineWorke
                     )
                 )
 
-                // Dispatch (Phase 3+: route to ModuleRegistry)
+                // Dispatch (routes to ModuleRegistry if available, otherwise marks acked)
+                val registry = AgentForegroundService._registry
                 val (status, resultJson) = try {
                     Log.d(TAG, "CommandPoll: dispatching ${cmd.type} [${cmd.id}]")
-                    // Currently a no-op dispatch — Phase 3 wires ModuleRegistry
-                    "acked" to """{"dispatched":true,"type":"${cmd.type}"}"""
+                    if (registry != null) {
+                        val agentCmd = com.personal.agent.core.modules.AgentCommand(
+                            id = cmd.id,
+                            type = cmd.type,
+                            payload = cmd.payload
+                        )
+                        val cmdResult = registry.dispatchCommand(agentCmd)
+                        if (cmdResult.success) {
+                            "acked" to """{"dispatched":true,"type":"${cmd.type}"}"""
+                        } else {
+                            "failed" to """{"error":"${cmdResult.errorCode}"}"""
+                        }
+                    } else {
+                        // Registry not yet initialized — accept command anyway
+                        "acked" to """{"dispatched":false,"reason":"registry_not_ready"}"""
+                    }
                 } catch (e: Exception) {
                     Log.e(TAG, "CommandPoll: dispatch failed for ${cmd.id}: ${e.message}")
                     "failed" to """{"error":"${e.message?.take(200)}"}"""
@@ -331,3 +347,34 @@ internal const val CONFIG_KEY_INTERVALS = "intervals"
 internal const val CONFIG_KEY_LIMITS    = "limits"
 internal const val CONFIG_KEY_PRIVACY   = "privacy"
 internal const val CONFIG_KEY_APPS      = "apps"
+
+// ─── CleanupWorker ────────────────────────────────────────────────────────────
+
+/**
+ * Runs daily to purge old data from Room based on retention policy.
+ * Does not require network — runs on any connection state.
+ */
+class CleanupWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, params) {
+
+    override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+        return@withContext try {
+            val db = AgentDatabase.getInstance(applicationContext)
+            val now = System.currentTimeMillis()
+            val day = 24L * 60 * 60 * 1000
+
+            db.logDao().deleteOlderThan(now - 14 * day)
+            db.commandDao().deleteCompletedOlderThan(now - 30 * day)
+            db.jobDao().deleteCompletedOlderThan(now - 30 * day)
+            db.notificationDao().deleteOlderThan(now - 7 * day)
+            db.screenDao().deleteOlderThan(now - 1 * day)
+            db.ocrDao().deleteOlderThan(now - 3 * day)
+            db.visionDao().deleteOlderThan(now - 3 * day)
+
+            Log.i(TAG, "CleanupWorker: retention cleanup complete")
+            Result.success()
+        } catch (e: Exception) {
+            Log.e(TAG, "CleanupWorker failed: ${e.message}")
+            Result.retry()
+        }
+    }
+}

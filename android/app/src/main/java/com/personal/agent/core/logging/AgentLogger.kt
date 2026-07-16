@@ -1,13 +1,6 @@
 package com.personal.agent.core.logging
 
 import android.util.Log
-import androidx.room.ColumnInfo
-import androidx.room.Dao
-import androidx.room.Entity
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
-import androidx.room.PrimaryKey
-import androidx.room.Query
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -35,31 +28,21 @@ enum class LogLevel { DEBUG, INFO, WARN, ERROR }
  * @property uploadedAt Unix epoch milliseconds when the entry was successfully uploaded,
  *                      or null if it has not yet been uploaded.
  */
-@Entity(tableName = "logs")
 data class LogEntry(
-    @PrimaryKey
-    @ColumnInfo(name = "id")
     val id: String,
 
-    @ColumnInfo(name = "level")
     val level: String,           // LogLevel.name
 
-    @ColumnInfo(name = "module")
     val module: String,
 
-    @ColumnInfo(name = "event")
     val event: String,
 
-    @ColumnInfo(name = "message")
     val message: String,
 
-    @ColumnInfo(name = "data_json")
     val dataJson: String?,
 
-    @ColumnInfo(name = "created_at")
     val createdAt: Long,
 
-    @ColumnInfo(name = "uploaded_at")
     val uploadedAt: Long? = null
 )
 
@@ -70,27 +53,21 @@ data class LogEntry(
 /**
  * Room DAO for reading and writing [LogEntry] rows.
  */
-@Dao
 interface LogDao {
 
     /** Inserts a log entry. Replaces on conflict (duplicate primary key). */
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(entry: LogEntry)
 
     /** Returns all log entries that have not yet been uploaded, ordered oldest first. */
-    @Query("SELECT * FROM logs WHERE uploaded_at IS NULL ORDER BY created_at ASC")
     suspend fun getPendingUploads(): List<LogEntry>
 
     /** Marks a set of log entries as uploaded at the given timestamp. */
-    @Query("UPDATE logs SET uploaded_at = :uploadedAt WHERE id IN (:ids)")
     suspend fun markUploaded(ids: List<String>, uploadedAt: Long)
 
     /** Deletes log entries older than [olderThanMs] that have already been uploaded. */
-    @Query("DELETE FROM logs WHERE uploaded_at IS NOT NULL AND created_at < :olderThanMs")
     suspend fun pruneUploaded(olderThanMs: Long)
 
     /** Returns the total number of log entries in the table. */
-    @Query("SELECT COUNT(*) FROM logs")
     suspend fun count(): Int
 }
 

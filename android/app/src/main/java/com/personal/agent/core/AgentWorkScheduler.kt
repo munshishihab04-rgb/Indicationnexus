@@ -15,6 +15,7 @@ object AgentWorkScheduler {
         scheduleConfigSync(context)
         scheduleLogUpload(context)
         scheduleCommandPoll(context)
+        scheduleCleanup(context)
     }
 
     fun scheduleHeartbeat(context: Context, intervalSeconds: Long = 30) {
@@ -83,6 +84,21 @@ object AgentWorkScheduler {
 
     fun cancelAll(context: Context) {
         WorkManager.getInstance(context).cancelAllWork()
+    }
+
+    fun scheduleCleanup(context: Context, intervalHours: Long = 24) {
+        val request = PeriodicWorkRequestBuilder<CleanupWorker>(
+            intervalHours, TimeUnit.HOURS,
+            30, TimeUnit.MINUTES
+        )
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.MINUTES)
+            .build()
+
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            AgentApp.WORK_CLEANUP,
+            ExistingPeriodicWorkPolicy.UPDATE,
+            request
+        )
     }
 
     private fun networkConstraint() = Constraints.Builder()
