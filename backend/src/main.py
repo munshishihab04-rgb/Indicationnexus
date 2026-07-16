@@ -3,8 +3,9 @@ import uuid
 from datetime import datetime
 from typing import Optional, Any
 
-from fastapi import FastAPI, Depends, HTTPException, Header
+from fastapi import FastAPI, Depends, HTTPException, Header, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
@@ -12,6 +13,7 @@ from contextlib import asynccontextmanager
 
 from src.database import init_db, get_session, Device, HeartbeatLog, ConfigRecord, CommandRecord, LogRecord
 from src.settings import settings
+from src.ws_manager import ws_manager
 
 
 # ─── Lifespan ─────────────────────────────────────────────────────────────────
@@ -133,10 +135,21 @@ async def heartbeat(
 ):
     device.last_seen = datetime.utcnow()
     session.add(device)
-
     log = HeartbeatLog(device_id=device.device_id, payload_json=json.dumps(body))
     session.add(log)
     await session.commit()
+
+    # Push to dashboard WebSocket
+    await ws_manager.broadcast(device.device_id, {
+        "event":    "heartbeat",
+        "deviceId": device.device_id,
+        "ts":       body.get("timestamp"),
+        "battery":  body.get("battery"),
+        "network":  body.get("network"),
+        "modules":  body.get("modules", []),
+        "queueDepth": body.get("queueDepth", 0),
+        "configVersion": body.get("configVersion", 0),
+    })
     return ok({"received": True})
 
 
@@ -188,7 +201,6 @@ async def get_config(
         session.add(record)
         await session.commit()
 
-    if currentVersion >= record.version:
         return ok({"version": record.version, "config": None})  # No update needed
 
     return ok({
@@ -283,6 +295,18 @@ async def upload_logs(
         )
         session.add(record)
     await session.commit()
+    # Push log events to dashboard
+    for entry in body.logs:
+        await ws_manager.broadcast(device.device_id, {
+            "event":  "log",
+            "deviceId": device.device_id,
+            "id":     entry.id,
+            "level":  entry.level,
+            "module": entry.module,
+            "event_name": entry.event,
+            "message": entry.message,
+            "ts":     entry.createdAt,
+        })
     return ok({"received": len(body.logs)})
 
 
@@ -559,5 +583,49 @@ async def server_status(session: AsyncSession = Depends(get_session)):
                 "last_seen": d.last_seen.isoformat() if d.last_seen else None,
             }
             for d in devices
-        ]
+        ],
+        "ws_connections": ws_manager.total_connections,
     })
+
+
+# ─── WebSocket real-time endpoint ─────────────────────────────────────────────
+
+@app.websocket("/ws/{device_id}")
+async def websocket_device(websocket: WebSocket, device_id: str):
+    """
+    Dashboard connects here to receive real-time events for a specific device.
+    Events pushed: heartbeat, log, command_ack, notification.
+    """
+    await ws_manager.connect(websocket, device_id)
+    try:
+        # Keep alive — wait for client disconnect
+        while True:
+            data = await websocket.receive_text()
+            # Echo ping/pong for keepalive
+            if data == "ping":
+                await websocket.send_text("pong")
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket, device_id)
+
+
+@app.websocket("/ws/admin")
+async def websocket_admin(websocket: WebSocket):
+    """Admin WebSocket — receives events from ALL devices."""
+    await ws_manager.connect(websocket, device_id=None)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            if data == "ping":
+                await websocket.send_text("pong")
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket, device_id=None)
+
+
+# ─── Static dashboard ─────────────────────────────────────────────────────────
+# Mount AFTER all API routes so /api/* takes priority.
+import os as _os
+_dashboard_path = _os.path.join(_os.path.dirname(__file__), "..", "dashboard")
+if _os.path.isdir(_dashboard_path):
+    from fastapi.staticfiles import StaticFiles as _SF
+    app.mount("/", _SF(directory=_dashboard_path, html=True), name="dashboard")
+

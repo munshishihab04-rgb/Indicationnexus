@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Personal Agent Dashboard</title>
+<style>
+  :root {
+    --bg:       #0a0b14;
+    --surface:  #111827;
+    --surface2: #1f2937;
+    --border:   #374151;
+    --accent:   #6c63ff;
+    --accent2:  #00d9b5;
+    --danger:   #ef4444;
+    --warn:     #f59e0b;
+    --ok:       #22c55e;
+    --text:     #f9fafb;
+    --text2:    #9ca3af;
+    --font:     'Segoe UI', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; }
+
+  /* Layout */
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; gap: 16px; }
+  header h1 { font-size: 18px; font-weight: 700; color: var(--accent); }
+  #ws-status { margin-left: auto; font-size: 12px; color: var(--text2); }
+  #ws-status.connected { color: var(--ok); }
+  #ws-status.disconnected { color: var(--danger); }
+
+  .layout { display: grid; grid-template-columns: 260px 1fr; height: calc(100vh - 49px); overflow: hidden; }
+  .sidebar { background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; padding: 16px; }
+  .main { overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+
+  /* Sidebar device list */
+  .sidebar h2 { font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+  .device-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 8px; cursor: pointer; transition: border-color .15s; }
+  .device-card:hover, .device-card.active { border-color: var(--accent); }
+  .device-card .name { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+  .device-card .meta { color: var(--text2); font-size: 11px; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .dot.online { background: var(--ok); }
+  .dot.offline { background: var(--text2); }
+
+  /* Cards */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .card h3 { font-size: 13px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 12px; }
+
+  /* Stat row */
+  .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+  .stat { background: var(--surface2); border-radius: 8px; padding: 12px; }
+  .stat .label { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
+  .stat .value { font-size: 22px; font-weight: 700; color: var(--accent); }
+  .stat .unit { font-size: 11px; color: var(--text2); }
+
+  /* Log stream */
+  #log-stream { background: #0d1117; border: 1px solid var(--border); border-radius: 8px; height: 280px; overflow-y: auto; padding: 10px; font-family: 'Fira Code', monospace; font-size: 12px; }
+  .log-entry { padding: 2px 0; border-bottom: 1px solid #1a2030; }
+  .log-entry .ts { color: var(--text2); margin-right: 8px; }
+  .log-entry .lvl { font-weight: 700; margin-right: 8px; width: 45px; display: inline-block; }
+  .log-entry .lvl.DEBUG { color: #60a5fa; }
+  .log-entry .lvl.INFO  { color: var(--ok); }
+  .log-entry .lvl.WARN  { color: var(--warn); }
+  .log-entry .lvl.ERROR { color: var(--danger); }
+  .log-entry .mod { color: var(--accent2); margin-right: 6px; }
+
+  /* Module health grid */
+  .modules-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .module-chip { display: flex; align-items: center; gap: 6px; background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 10px; font-size: 12px; }
+  .module-chip .status-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .module-chip .status-dot.HEALTHY  { background: var(--ok); }
+  .module-chip .status-dot.DEGRADED { background: var(--warn); }
+  .module-chip .status-dot.STOPPED  { background: var(--text2); }
+  .module-chip .status-dot.ERROR    { background: var(--danger); }
+
+  /* Action panels — tab strip */
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
+  .tab { padding: 6px 14px; border-radius: 6px 6px 0 0; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--text2); border: 1px solid transparent; border-bottom: none; }
+  .tab.active { background: var(--surface2); color: var(--text); border-color: var(--border); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Forms */
+  label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 4px; margin-top: 10px; }
+  input, select, textarea { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 7px 10px; font-size: 13px; outline: none; font-family: var(--font); }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  textarea { min-height: 100px; resize: vertical; font-family: 'Fira Code', monospace; }
+  button { background: var(--accent); color: #fff; border: none; border-radius: 6px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 10px; }
+  button:hover { opacity: .85; }
+  button.secondary { background: var(--surface2); border: 1px solid var(--border); color: var(--text); }
+  .result-box { margin-top: 10px; background: #0d1117; border: 1px solid var(--border); border-radius: 6px; padding: 10px; font-family: 'Fira Code', monospace; font-size: 12px; white-space: pre-wrap; color: var(--accent2); max-height: 200px; overflow-y: auto; }
+
+  /* Battery bar */
+  .battery-bar { background: var(--surface2); border-radius: 4px; height: 8px; overflow: hidden; margin-top: 6px; }
+  .battery-fill { height: 100%; background: var(--ok); border-radius: 4px; transition: width .5s; }
+  .battery-fill.low { background: var(--danger); }
+  .battery-fill.mid { background: var(--warn); }
+
+  @media (max-width: 700px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⬡ Personal Agent</h1>
+  <select id="device-select" style="width:200px;margin-left:8px"></select>
+  <span id="ws-status" class="disconnected">● Disconnected</span>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <h2>Devices</h2>
+    <div id="device-list"></div>
+  </aside>
+
+  <main class="main">
+    <!-- Stats row -->
+    <div class="card">
+      <h3>Device Status</h3>
+      <div class="stats">
+        <div class="stat">
+          <div class="label">Battery</div>
+          <div class="value" id="stat-battery">—</div>
+          <div class="unit">%</div>
+          <div class="battery-bar"><div class="battery-fill" id="battery-fill" style="width:0%"></div></div>
+        </div>
+        <div class="stat">
+          <div class="label">Network</div>
+          <div class="value" id="stat-network" style="font-size:14px;padding-top:4px">—</div>
+        </div>
+        <div class="stat">
+          <div class="label">Job Queue</div>
+          <div class="value" id="stat-queue">—</div>
+        </div>
+        <div class="stat">
+          <div class="label">Config v</div>
+          <div class="value" id="stat-config">—</div>
+        </div>
+        <div class="stat">
+          <div class="label">Last Seen</div>
+          <div class="value" id="stat-lastseen" style="font-size:12px;padding-top:6px">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modules -->
+    <div class="card">
+      <h3>Modules</h3>
+      <div class="modules-grid" id="modules-grid"><span style="color:var(--text2);font-size:12px">No data yet</span></div>
+    </div>
+
+    <!-- Log stream -->
+    <div class="card">
+      <h3>Live Log Stream &nbsp;<button class="secondary" style="padding:3px 10px;font-size:11px;margin-top:0" onclick="clearLogs()">Clear</button></h3>
+      <div id="log-stream"></div>
+    </div>
+
+    <!-- Actions -->
+    <div class="card">
+      <h3>Actions</h3>
+      <div class="tabs">
+        <div class="tab active" onclick="showTab('tab-a11y',this)">Accessibility</div>
+        <div class="tab" onclick="showTab('tab-workflow',this)">Workflow</div>
+        <div class="tab" onclick="showTab('tab-command',this)">Raw Command</div>
+        <div class="tab" onclick="showTab('tab-vision',this)">Vision/OCR</div>
+      </div>
+
+      <!-- Accessibility -->
+      <div id="tab-a11y" class="tab-panel active">
+        <label>Action Type</label>
+        <select id="a11y-type">
+          <option>CLICK</option><option>LONG_CLICK</option><option>TYPE</option>
+          <option>CLEAR_TEXT</option><option>SCROLL_FORWARD</option><option>SCROLL_BACKWARD</option>
+          <option>BACK</option><option>HOME</option><option>RECENTS</option>
+          <option>NOTIFICATIONS</option><option>QUICK_SETTINGS</option>
+          <option>WAIT_ELEMENT</option><option>WAIT_TEXT</option><option>SWIPE</option>
+        </select>
+        <label>Target Text (optional)</label>
+        <input id="a11y-target" placeholder="e.g. Send, OK, Submit">
+        <label>Target ViewId (optional)</label>
+        <input id="a11y-viewid" placeholder="e.g. btn_send">
+        <label>Text to Type (for TYPE action)</label>
+        <input id="a11y-text" placeholder="Hello world">
+        <label>Timeout (ms)</label>
+        <input id="a11y-timeout" value="10000" type="number">
+        <button onclick="sendA11yAction()">▶ Execute</button>
+        <div class="result-box" id="a11y-result" style="display:none"></div>
+      </div>
+
+      <!-- Workflow -->
+      <div id="tab-workflow" class="tab-panel">
+        <label>Install Workflow (JSON)</label>
+        <textarea id="wf-json" placeholder='{"id":"wf-001","name":"Auto Reply","enabled":true,"version":1,"trigger":{"type":"NOTIFICATION_RECEIVED","packageName":"com.whatsapp"},"conditions":[],"steps":[{"id":"s1","action":{"type":"BACK"},"onFail":"CONTINUE","retryCount":0,"retryDelayMs":500}],"createdAt":0,"updatedAt":0}'></textarea>
+        <button onclick="installWorkflow()">📥 Install Workflow</button>
+        <hr style="border:none;border-top:1px solid var(--border);margin:14px 0">
+        <label>Run Workflow by ID</label>
+        <input id="wf-run-id" placeholder="wf-001">
+        <button onclick="runWorkflow()">▶ Run Workflow</button>
+        <div class="result-box" id="wf-result" style="display:none"></div>
+      </div>
+
+      <!-- Raw command -->
+      <div id="tab-command" class="tab-panel">
+        <label>Command Type</label>
+        <input id="cmd-type" placeholder="e.g. get_stats, check_permissions">
+        <label>Payload JSON</label>
+        <textarea id="cmd-payload">{}</textarea>
+        <button onclick="sendRawCommand()">▶ Send Command</button>
+        <div class="result-box" id="cmd-result" style="display:none"></div>
+      </div>
+
+      <!-- Vision / OCR -->
+      <div id="tab-vision" class="tab-panel">
+        <button onclick="sendVisionCmd('capture_screen')">📸 Capture + OCR + Classify</button>
+        <button onclick="sendVisionCmd('ocr_text')" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);margin-left:8px">📄 OCR Text Only</button>
+        <button onclick="sendVisionCmd('get_screen_type')" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);margin-left:8px">🔍 Get Screen Type</button>
+        <div class="result-box" id="vision-result" style="display:none"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+const API = '';   // same origin
+let currentDevice = null;
+let ws = null;
+let wsReconnectTimer = null;
+
+// ─── Init ──────────────────────────────────────────────────────────────────
+
+window.onload = () => {
+  loadDevices();
+  setInterval(loadDevices, 30_000);
+};
+
+async function loadDevices() {
+  try {
+    const r = await fetch(`${API}/v1/status`, {headers: deviceHeaders()});
+    if (!r.ok) return;
+    const j = await r.json();
+    const devices = j.data?.devices || [];
+    renderDeviceList(devices);
+    if (devices.length && !currentDevice) selectDevice(devices[0].device_id);
+  } catch(e) { console.warn('loadDevices:', e); }
+}
+
+function deviceHeaders(extraDeviceId) {
+  const did = extraDeviceId || currentDevice || '';
+  // Dashboard calls don't need device auth — use a static admin token if configured
+  return {'X-Device-Id': did, 'Authorization': 'Bearer ' + (window._adminKey || '')};
+}
+
+// ─── Device list ──────────────────────────────────────────────────────────
+
+function renderDeviceList(devices) {
+  const list  = document.getElementById('device-list');
+  const sel   = document.getElementById('device-select');
+  list.innerHTML = '';
+  sel.innerHTML  = '';
+  devices.forEach(d => {
+    const age = d.last_seen ? ((Date.now() - new Date(d.last_seen)) / 1000) : 9999;
+    const online = age < 120;
+    const card = document.createElement('div');
+    card.className = 'device-card' + (d.device_id === currentDevice ? ' active' : '');
+    card.innerHTML = `<div class="name"><span class="dot ${online?'online':'offline'}"></span>${d.model || d.device_id}</div><div class="meta">${d.device_id}<br>${d.last_seen ? new Date(d.last_seen).toLocaleTimeString() : 'Never'}</div>`;
+    card.onclick = () => selectDevice(d.device_id);
+    list.appendChild(card);
+    const opt = document.createElement('option');
+    opt.value = d.device_id;
+    opt.text  = (d.model || d.device_id);
+    if (d.device_id === currentDevice) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  document.getElementById('device-select').onchange = e => selectDevice(e.target.value);
+}
+
+function selectDevice(deviceId) {
+  currentDevice = deviceId;
+  document.querySelectorAll('.device-card').forEach(c => c.classList.toggle('active', c.querySelector('.meta').textContent.startsWith(deviceId)));
+  connectWS();
+}
+
+// ─── WebSocket ────────────────────────────────────────────────────────────
+
+function connectWS() {
+  if (ws) { ws.close(); ws = null; }
+  if (!currentDevice) return;
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/ws/${currentDevice}`);
+  ws.onopen = () => {
+    setWsStatus(true);
+    setInterval(() => ws?.readyState === 1 && ws.send('ping'), 25_000);
+  };
+  ws.onclose = () => {
+    setWsStatus(false);
+    clearTimeout(wsReconnectTimer);
+    wsReconnectTimer = setTimeout(connectWS, 3_000);
+  };
+  ws.onerror = () => ws.close();
+  ws.onmessage = e => handleWsEvent(JSON.parse(e.data));
+}
+
+function setWsStatus(connected) {
+  const el = document.getElementById('ws-status');
+  el.textContent = connected ? '● Connected' : '● Disconnected';
+  el.className = connected ? 'connected' : 'disconnected';
+}
+
+function handleWsEvent(data) {
+  if (data.deviceId && data.deviceId !== currentDevice) return;
+  switch (data.event) {
+    case 'heartbeat': updateStats(data); break;
+    case 'log':       appendLog(data);   break;
+  }
+}
+
+// ─── Stats ────────────────────────────────────────────────────────────────
+
+function updateStats(hb) {
+  const batt = hb.battery?.percent ?? null;
+  document.getElementById('stat-battery').textContent = batt !== null ? batt : '—';
+  const fill = document.getElementById('battery-fill');
+  if (batt !== null) {
+    fill.style.width = batt + '%';
+    fill.className = 'battery-fill' + (batt < 20 ? ' low' : batt < 50 ? ' mid' : '');
+  }
+  const net = hb.network;
+  document.getElementById('stat-network').textContent = net
+    ? `${net.transport}${net.metered ? ' (metered)' : ''}${net.connected ? '' : ' ✗'}`
+    : '—';
+  document.getElementById('stat-queue').textContent = hb.queueDepth ?? '—';
+  document.getElementById('stat-config').textContent = hb.configVersion ?? '—';
+  document.getElementById('stat-lastseen').textContent = new Date().toLocaleTimeString();
+  if (hb.modules?.length) renderModules(hb.modules);
+}
+
+function renderModules(modules) {
+  const grid = document.getElementById('modules-grid');
+  grid.innerHTML = '';
+  modules.forEach(m => {
+    const chip = document.createElement('div');
+    chip.className = 'module-chip';
+    chip.innerHTML = `<div class="status-dot ${m.status}"></div>${m.id}`;
+    chip.title = `queue: ${m.queueDepth ?? 0}`;
+    grid.appendChild(chip);
+  });
+}
+
+// ─── Logs ─────────────────────────────────────────────────────────────────
+
+function appendLog(entry) {
+  const stream = document.getElementById('log-stream');
+  const div = document.createElement('div');
+  div.className = 'log-entry';
+  const ts  = entry.ts ? new Date(entry.ts).toLocaleTimeString() : '';
+  const lvl = entry.level || 'INFO';
+  div.innerHTML = `<span class="ts">${ts}</span><span class="lvl ${lvl}">${lvl}</span><span class="mod">[${entry.module || '?'}]</span>${entry.event_name ? entry.event_name + ' ' : ''}${entry.message || ''}`;
+  stream.appendChild(div);
+  stream.scrollTop = stream.scrollHeight;
+  // Keep last 500 entries
+  while (stream.children.length > 500) stream.removeChild(stream.firstChild);
+}
+
+function clearLogs() { document.getElementById('log-stream').innerHTML = ''; }
+
+// ─── Tabs ─────────────────────────────────────────────────────────────────
+
+function showTab(id, el) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  el.classList.add('active');
+}
+
+// ─── Accessibility ────────────────────────────────────────────────────────
+
+async function sendA11yAction() {
+  if (!currentDevice) return alert('Select a device first');
+  const body = {
+    deviceId: currentDevice,
+    actionType: document.getElementById('a11y-type').value,
+    targetText: document.getElementById('a11y-target').value,
+    targetViewId: document.getElementById('a11y-viewid').value,
+    text: document.getElementById('a11y-text').value,
+    timeoutMs: parseInt(document.getElementById('a11y-timeout').value) || 10000,
+  };
+  await postAndShow('/v1/accessibility/action', body, 'a11y-result');
+}
+
+// ─── Workflow ─────────────────────────────────────────────────────────────
+
+async function installWorkflow() {
+  if (!currentDevice) return alert('Select a device first');
+  let wfJson = document.getElementById('wf-json').value.trim();
+  if (!wfJson) return alert('Enter workflow JSON');
+  const body = { deviceId: currentDevice, name: 'Dashboard Workflow', workflowJson: wfJson };
+  await postAndShow('/v1/automation/workflow', body, 'wf-result');
+}
+
+async function runWorkflow() {
+  if (!currentDevice) return alert('Select a device first');
+  const wid = document.getElementById('wf-run-id').value.trim();
+  if (!wid) return alert('Enter workflow ID');
+  const body = { deviceId: currentDevice, workflowId: wid, vars: {} };
+  await postAndShow('/v1/automation/run', body, 'wf-result');
+}
+
+// ─── Raw command ──────────────────────────────────────────────────────────
+
+async function sendRawCommand() {
+  if (!currentDevice) return alert('Select a device first');
+  let payload = {};
+  try { payload = JSON.parse(document.getElementById('cmd-payload').value); } catch(e) { return alert('Invalid JSON payload'); }
+  const body = { deviceId: currentDevice, type: document.getElementById('cmd-type').value, payload };
+  await postAndShow('/v1/commands', body, 'cmd-result');
+}
+
+// ─── Vision ───────────────────────────────────────────────────────────────
+
+async function sendVisionCmd(cmdType) {
+  if (!currentDevice) return alert('Select a device first');
+  const body = { deviceId: currentDevice, type: cmdType, payload: {} };
+  await postAndShow('/v1/commands', body, 'vision-result');
+}
+
+// ─── Shared fetch ─────────────────────────────────────────────────────────
+
+async function postAndShow(url, body, resultId) {
+  const el = document.getElementById(resultId);
+  el.style.display = 'block';
+  el.textContent = 'Sending…';
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const j = await r.json();
+    el.textContent = JSON.stringify(j, null, 2);
+  } catch(e) {
+    el.textContent = 'Error: ' + e.message;
+  }
+}
+</script>
+</body>
+</html>
