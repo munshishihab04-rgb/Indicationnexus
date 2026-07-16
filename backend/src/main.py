@@ -377,6 +377,88 @@ async def receive_ocr_result(
     return ok({"received": True, "screenId": body.screenId, "chars": len(body.fullText)})
 
 
+# ─── Automation workflows ─────────────────────────────────────────────────────
+
+class WorkflowPayload(BaseModel):
+    deviceId: str
+    name: str
+    workflowJson: str    # full Workflow JSON
+    enabled: bool = True
+
+
+@app.post("/v1/automation/workflow")
+async def create_workflow(
+    body: WorkflowPayload,
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    Sends an install_workflow command to a device.
+    workflowJson must be a valid Workflow JSON as per WorkflowDSL.kt.
+    """
+    device = await session.get(Device, body.deviceId)
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    cmd = CommandRecord(
+        id=str(uuid.uuid4()),
+        device_id=device.device_id,
+        type="install_workflow",
+        payload_json=json.dumps({
+            "workflowJson": body.workflowJson
+        }),
+    )
+    session.add(cmd)
+    await session.commit()
+    return ok({"commandId": cmd.id, "type": "install_workflow"})
+
+
+class RunWorkflowPayload(BaseModel):
+    deviceId: str
+    workflowId: str
+    vars: dict = {}
+
+
+@app.post("/v1/automation/run")
+async def run_workflow(
+    body: RunWorkflowPayload,
+    session: AsyncSession = Depends(get_session)
+):
+    """Sends a run_workflow command to a device (device must already have the workflow)."""
+    device = await session.get(Device, body.deviceId)
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+
+    cmd = CommandRecord(
+        id=str(uuid.uuid4()),
+        device_id=device.device_id,
+        type="run_workflow",
+        payload_json=json.dumps({
+            "workflowId": body.workflowId,
+            "vars": body.vars
+        }),
+    )
+    session.add(cmd)
+    await session.commit()
+    return ok({"commandId": cmd.id, "workflowId": body.workflowId})
+
+
+@app.get("/v1/automation/workflows")
+async def list_workflows(
+    device: Device = Depends(get_device),
+    session: AsyncSession = Depends(get_session)
+):
+    """Sends a list_workflows command and returns the command ID (result arrives via /v1/logs)."""
+    cmd = CommandRecord(
+        id=str(uuid.uuid4()),
+        device_id=device.device_id,
+        type="list_workflows",
+        payload_json="{}",
+    )
+    session.add(cmd)
+    await session.commit()
+    return ok({"commandId": cmd.id, "note": "result delivered via /v1/ack"})
+
+
 # ─── Accessibility action (sends command to device) ───────────────────────────
 
 class AccessibilityActionRequest(BaseModel):

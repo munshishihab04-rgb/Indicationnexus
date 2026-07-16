@@ -3,6 +3,8 @@ package com.personal.agent.notifications
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import com.personal.agent.automation.AgentEvent
+import com.personal.agent.automation.AutomationEngineState
 import com.personal.agent.core.db.AgentDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -55,6 +57,15 @@ class AgentNotificationListener : NotificationListenerService() {
                 if (inserted) {
                     Log.d(TAG, "Stored: [${event.source}] ${event.appName}: ${event.title?.take(50)}")
                     NotificationEngineState.received++
+                    // Fire automation event
+                    AutomationEngineState.engine?.onEvent(
+                        AgentEvent.NotificationEvent(
+                            packageName = event.packageName,
+                            title       = event.title,
+                            body        = event.body,
+                            sender      = event.sender
+                        )
+                    )
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error processing notification from ${sbn.packageName}: ${e.message}")

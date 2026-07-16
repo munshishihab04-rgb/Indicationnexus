@@ -4,6 +4,8 @@ import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
+import com.personal.agent.automation.AgentEvent
+import com.personal.agent.automation.AutomationEngineState
 
 private const val TAG = "AccessibilityService"
 
@@ -64,6 +66,10 @@ class AgentAccessibilityService : AccessibilityService() {
             val pkg = event.packageName?.toString()
             if (!pkg.isNullOrBlank()) {
                 foregroundPackage = pkg
+                // Fire automation event
+                AutomationEngineState.engine?.onEvent(
+                    AgentEvent.AppForegroundEvent(packageName = pkg, foreground = true)
+                )
             }
         }
     }

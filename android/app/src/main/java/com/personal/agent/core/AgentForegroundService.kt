@@ -11,6 +11,7 @@ import com.personal.agent.core.logging.AgentLogger
 import com.personal.agent.core.modules.ModuleContext
 import com.personal.agent.core.modules.ModuleRegistry
 import com.personal.agent.accessibility.AccessibilityEngine
+import com.personal.agent.automation.AutomationEngine
 import com.personal.agent.device.DeviceManagerModule
 import com.personal.agent.vision.VisionEngine
 import com.personal.agent.notifications.NotificationEngine
@@ -114,7 +115,8 @@ class AgentForegroundService : Service() {
             PermissionManager(),
             NotificationEngine(),
             AccessibilityEngine(),
-            VisionEngine()
+            VisionEngine(),
+            AutomationEngine()
         )
 
         val reg = ModuleRegistry(modules, moduleContext)
