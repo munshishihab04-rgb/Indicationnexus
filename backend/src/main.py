@@ -316,6 +316,32 @@ async def create_command(
 
 # ─── Status (for dashboard/debug) ─────────────────────────────────────────────
 
+@app.get("/v1/notifications")
+async def get_notifications(
+    limit: int = 50,
+    device: Device = Depends(get_device),
+    session: AsyncSession = Depends(get_session)
+):
+    """List received notifications for a device, newest first."""
+    q = select(LogRecord).where(
+        LogRecord.device_id == device.device_id
+    ).limit(limit)
+    result = await session.exec(q)
+    logs = result.all()
+    logs_sorted = sorted(logs, key=lambda l: l.received_at, reverse=True)
+    return ok({"notifications": [
+        {
+            "id": l.id,
+            "level": l.level,
+            "module": l.module,
+            "event": l.event,
+            "message": l.message,
+            "receivedAt": l.received_at.isoformat() if l.received_at else None,
+        }
+        for l in logs_sorted
+    ]})
+
+
 @app.get("/v1/status")
 async def server_status(session: AsyncSession = Depends(get_session)):
     devices = (await session.exec(select(Device))).all()

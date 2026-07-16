@@ -11,6 +11,7 @@ import com.personal.agent.core.logging.AgentLogger
 import com.personal.agent.core.modules.ModuleContext
 import com.personal.agent.core.modules.ModuleRegistry
 import com.personal.agent.device.DeviceManagerModule
+import com.personal.agent.notifications.NotificationEngine
 import com.personal.agent.permissions.PermissionManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -108,7 +109,8 @@ class AgentForegroundService : Service() {
         // Register all available modules
         val modules = setOf(
             DeviceManagerModule(),
-            PermissionManager()
+            PermissionManager(),
+            NotificationEngine()
         )
 
         val reg = ModuleRegistry(modules, moduleContext)
