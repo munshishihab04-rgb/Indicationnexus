@@ -11,6 +11,8 @@ This repository contains the structured technical documentation for **Nexus**, a
 | Document | Purpose |
 |---|---|
 | [`docs/OVERVIEW.md`](docs/OVERVIEW.md) | Product overview, scope, architecture summary |
+| [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md) | Full target Nexus Personal Agent specification |
+| [`docs/COVERAGE_MATRIX.md`](docs/COVERAGE_MATRIX.md) | Implemented vs missing coverage against the specification |
 | [`docs/PROJECT_STRUCTURE.md`](docs/PROJECT_STRUCTURE.md) | Repository layout and important files |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Android ↔ server ↔ dashboard architecture |
 | [`docs/FEATURES.md`](docs/FEATURES.md) | Complete implemented feature list |
