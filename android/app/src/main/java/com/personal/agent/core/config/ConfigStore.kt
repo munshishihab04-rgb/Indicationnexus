@@ -51,7 +51,7 @@ data class RemoteConfig(
  * (primary key fixed to 1) so queries never need a WHERE clause.
  */
 @Entity(tableName = "remote_config")
-internal data class RemoteConfigEntity(
+data class RemoteConfigEntity(
     @PrimaryKey
     @ColumnInfo(name = "id")
     val id: Int = 1,
@@ -92,7 +92,7 @@ internal data class RemoteConfigEntity(
  * Room DAO for reading and writing the single cached [RemoteConfigEntity] row.
  */
 @Dao
-internal interface RemoteConfigDao {
+interface RemoteConfigDao {
 
     /**
      * Returns the cached config entity, or null if none has been saved yet.

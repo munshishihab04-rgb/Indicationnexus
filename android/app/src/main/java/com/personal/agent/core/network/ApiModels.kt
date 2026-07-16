@@ -3,9 +3,13 @@ package com.personal.agent.core.network
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Standard envelope
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Standard envelope ────────────────────────────────────────────────────────
+
+@JsonClass(generateAdapter = true)
+data class ResponseMeta(
+    @Json(name = "requestId") val requestId: String,
+    @Json(name = "serverTime") val serverTime: Long
+)
 
 @JsonClass(generateAdapter = true)
 data class ApiResponse<T>(
@@ -15,33 +19,12 @@ data class ApiResponse<T>(
 )
 
 @JsonClass(generateAdapter = true)
-data class ResponseMeta(
-    @Json(name = "requestId") val requestId: String,
-    @Json(name = "serverTime") val serverTime: Long
-)
-
-@JsonClass(generateAdapter = true)
-data class ApiError(
-    @Json(name = "ok") val ok: Boolean = false,
-    @Json(name = "error") val error: ErrorDetail,
-    @Json(name = "meta") val meta: ResponseMeta? = null
-)
-
-@JsonClass(generateAdapter = true)
 data class ErrorDetail(
     @Json(name = "code") val code: String,
     @Json(name = "message") val message: String
 )
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Device — registration
-// ─────────────────────────────────────────────────────────────────────────────
-
-@JsonClass(generateAdapter = true)
-data class RegisterRequest(
-    @Json(name = "setupToken") val setupToken: String? = null,
-    @Json(name = "device") val device: DevicePayload
-)
+// ─── Device registration ──────────────────────────────────────────────────────
 
 @JsonClass(generateAdapter = true)
 data class DevicePayload(
@@ -58,27 +41,18 @@ data class DevicePayload(
 )
 
 @JsonClass(generateAdapter = true)
+data class RegisterRequest(
+    @Json(name = "setupToken") val setupToken: String?,
+    @Json(name = "device") val device: DevicePayload
+)
+
+@JsonClass(generateAdapter = true)
 data class RegisterResponse(
     @Json(name = "apiKey") val apiKey: String,
     @Json(name = "deviceId") val deviceId: String
 )
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Heartbeat
-// ─────────────────────────────────────────────────────────────────────────────
-
-@JsonClass(generateAdapter = true)
-data class HeartbeatRequest(
-    @Json(name = "deviceId") val deviceId: String,
-    @Json(name = "timestamp") val timestamp: Long,
-    @Json(name = "battery") val battery: BatteryInfo,
-    @Json(name = "network") val network: NetworkInfo,
-    @Json(name = "storage") val storage: StorageInfo,
-    @Json(name = "memory") val memory: MemoryInfo,
-    @Json(name = "modules") val modules: List<ModuleStatusInfo>,
-    @Json(name = "queueDepth") val queueDepth: Int,
-    @Json(name = "configVersion") val configVersion: Int
-)
+// ─── Heartbeat ────────────────────────────────────────────────────────────────
 
 @JsonClass(generateAdapter = true)
 data class BatteryInfo(
@@ -115,26 +89,20 @@ data class ModuleStatusInfo(
     @Json(name = "queueDepth") val queueDepth: Int
 )
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Config
-// ─────────────────────────────────────────────────────────────────────────────
-
 @JsonClass(generateAdapter = true)
-data class ConfigResponse(
-    @Json(name = "ok") val ok: Boolean,
-    @Json(name = "version") val version: Int,
-    @Json(name = "config") val config: RemoteConfigPayload? = null
+data class HeartbeatRequest(
+    @Json(name = "deviceId") val deviceId: String,
+    @Json(name = "timestamp") val timestamp: Long,
+    @Json(name = "battery") val battery: BatteryInfo,
+    @Json(name = "network") val network: NetworkInfo,
+    @Json(name = "storage") val storage: StorageInfo,
+    @Json(name = "memory") val memory: MemoryInfo,
+    @Json(name = "modules") val modules: List<ModuleStatusInfo>,
+    @Json(name = "queueDepth") val queueDepth: Int,
+    @Json(name = "configVersion") val configVersion: Int
 )
 
-@JsonClass(generateAdapter = true)
-data class RemoteConfigPayload(
-    @Json(name = "version") val version: Int,
-    @Json(name = "modules") val modules: Map<String, ModuleConfigPayload>,
-    @Json(name = "intervals") val intervals: IntervalsPayload,
-    @Json(name = "limits") val limits: LimitsPayload,
-    @Json(name = "privacy") val privacy: PrivacyPayload,
-    @Json(name = "apps") val apps: AppsPayload
-)
+// ─── Remote config ────────────────────────────────────────────────────────────
 
 @JsonClass(generateAdapter = true)
 data class ModuleConfigPayload(
@@ -168,14 +136,23 @@ data class AppsPayload(
     @Json(name = "denylist") val denylist: List<String>
 )
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Commands
-// ─────────────────────────────────────────────────────────────────────────────
+@JsonClass(generateAdapter = true)
+data class RemoteConfigPayload(
+    @Json(name = "version") val version: Int,
+    @Json(name = "modules") val modules: Map<String, ModuleConfigPayload>,
+    @Json(name = "intervals") val intervals: IntervalsPayload,
+    @Json(name = "limits") val limits: LimitsPayload,
+    @Json(name = "privacy") val privacy: PrivacyPayload,
+    @Json(name = "apps") val apps: AppsPayload
+)
 
 @JsonClass(generateAdapter = true)
-data class CommandsResponse(
-    @Json(name = "commands") val commands: List<CommandPayload>
+data class ConfigData(
+    @Json(name = "version") val version: Int,
+    @Json(name = "config") val config: RemoteConfigPayload?
 )
+
+// ─── Commands ─────────────────────────────────────────────────────────────────
 
 @JsonClass(generateAdapter = true)
 data class CommandPayload(
@@ -186,6 +163,11 @@ data class CommandPayload(
 )
 
 @JsonClass(generateAdapter = true)
+data class CommandsData(
+    @Json(name = "commands") val commands: List<CommandPayload>
+)
+
+@JsonClass(generateAdapter = true)
 data class AckRequest(
     @Json(name = "commandId") val commandId: String,
     @Json(name = "status") val status: String,
@@ -193,15 +175,7 @@ data class AckRequest(
     @Json(name = "timestamp") val timestamp: Long
 )
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Logs
-// ─────────────────────────────────────────────────────────────────────────────
-
-@JsonClass(generateAdapter = true)
-data class LogUploadRequest(
-    @Json(name = "deviceId") val deviceId: String,
-    @Json(name = "logs") val logs: List<LogPayload>
-)
+// ─── Logs ─────────────────────────────────────────────────────────────────────
 
 @JsonClass(generateAdapter = true)
 data class LogPayload(
@@ -214,59 +188,46 @@ data class LogPayload(
     @Json(name = "createdAt") val createdAt: Long
 )
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Notification
-// ─────────────────────────────────────────────────────────────────────────────
-
 @JsonClass(generateAdapter = true)
-data class NotificationRequest(
+data class LogUploadRequest(
     @Json(name = "deviceId") val deviceId: String,
-    @Json(name = "title") val title: String,
-    @Json(name = "body") val body: String,
-    @Json(name = "data") val data: Map<String, Any>? = null
+    @Json(name = "logs") val logs: List<LogPayload>
 )
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Vision / OCR
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Notification ─────────────────────────────────────────────────────────────
 
 @JsonClass(generateAdapter = true)
-data class VisionAnalyzeRequest(
+data class NotificationPayload(
+    @Json(name = "id") val id: String,
+    @Json(name = "packageName") val packageName: String,
+    @Json(name = "appName") val appName: String?,
+    @Json(name = "title") val title: String?,
+    @Json(name = "body") val body: String?,
+    @Json(name = "sender") val sender: String?,
+    @Json(name = "conversation") val conversation: String?,
+    @Json(name = "timestamp") val timestamp: Long
+)
+
+// ─── Vision / OCR / Automation ────────────────────────────────────────────────
+
+@JsonClass(generateAdapter = true)
+data class VisionRequest(
     @Json(name = "deviceId") val deviceId: String,
-    @Json(name = "prompt") val prompt: String,
-    @Json(name = "imageBase64") val imageBase64: String? = null,
-    @Json(name = "context") val context: Map<String, Any>? = null
+    @Json(name = "screenId") val screenId: String,
+    @Json(name = "context") val context: Map<String, Any> = emptyMap()
 )
 
 @JsonClass(generateAdapter = true)
-data class VisionAnalyzeResponse(
-    @Json(name = "result") val result: String,
-    @Json(name = "confidence") val confidence: Float? = null,
-    @Json(name = "elements") val elements: List<Map<String, Any>>? = null
+data class OcrRequest(
+    @Json(name = "deviceId") val deviceId: String,
+    @Json(name = "screenId") val screenId: String
 )
-
-@JsonClass(generateAdapter = true)
-data class OcrResponse(
-    @Json(name = "text") val text: String,
-    @Json(name = "blocks") val blocks: List<Map<String, Any>>? = null,
-    @Json(name = "confidence") val confidence: Float? = null
-)
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Automation
-// ─────────────────────────────────────────────────────────────────────────────
 
 @JsonClass(generateAdapter = true)
 data class AutomationRunRequest(
     @Json(name = "deviceId") val deviceId: String,
     @Json(name = "workflowId") val workflowId: String,
-    @Json(name = "trigger") val trigger: String,
-    @Json(name = "params") val params: Map<String, Any>? = null
-)
-
-@JsonClass(generateAdapter = true)
-data class AutomationRunResponse(
     @Json(name = "runId") val runId: String,
     @Json(name = "status") val status: String,
-    @Json(name = "startedAt") val startedAt: Long
+    @Json(name = "result") val result: Map<String, Any> = emptyMap()
 )

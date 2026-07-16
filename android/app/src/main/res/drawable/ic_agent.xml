@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Agent icon: simple circuit/brain shape on dark background -->
+    <path
+        android:pathData="M54,54m-40,0a40,40 0,1 1,80 0a40,40 0,1 1,-80 0"
+        android:fillColor="#6C63FF" />
+    <path
+        android:pathData="M36,48 L54,36 L72,48 L72,60 L54,72 L36,60 Z"
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.9" />
+    <path
+        android:pathData="M54,44 L54,64 M44,54 L64,54"
+        android:strokeColor="#6C63FF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round" />
+</vector>
