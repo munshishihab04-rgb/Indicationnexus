@@ -229,6 +229,11 @@ const API = '';   // same origin
 let currentDevice = null;
 let ws = null;
 let wsReconnectTimer = null;
+// Set admin token via URL param ?admin=<token> or hardcode here for local use
+const _adminToken = new URLSearchParams(location.search).get('admin') || window._adminToken || '';
+function adminHeaders() {
+  return _adminToken ? {'X-Admin-Token': _adminToken, 'Content-Type': 'application/json'} : {'Content-Type': 'application/json'};
+}
 
 // ─── Init ──────────────────────────────────────────────────────────────────
 
@@ -266,12 +271,14 @@ function renderDeviceList(devices) {
     const online = age < 120;
     const card = document.createElement('div');
     card.className = 'device-card' + (d.device_id === currentDevice ? ' active' : '');
-    card.innerHTML = `<div class="name"><span class="dot ${online?'online':'offline'}"></span>${d.model || d.device_id}</div><div class="meta">${d.device_id}<br>${d.last_seen ? new Date(d.last_seen).toLocaleTimeString() : 'Never'}</div>`;
+    // Show model + device_id to disambiguate devices with same model name
+    const displayName = d.model && d.model !== d.device_id ? `${d.model} <small style="color:var(--text2);font-weight:400">${d.device_id}</small>` : d.device_id;
+    card.innerHTML = `<div class="name"><span class="dot ${online?'online':'offline'}"></span>${displayName}</div><div class="meta">${d.last_seen ? new Date(d.last_seen).toLocaleTimeString() : 'Never'}</div>`;
     card.onclick = () => selectDevice(d.device_id);
     list.appendChild(card);
     const opt = document.createElement('option');
     opt.value = d.device_id;
-    opt.text  = (d.model || d.device_id);
+    opt.text  = d.model ? `${d.model} (${d.device_id})` : d.device_id;
     if (d.device_id === currentDevice) opt.selected = true;
     sel.appendChild(opt);
   });
@@ -388,7 +395,7 @@ async function sendA11yAction() {
     text: document.getElementById('a11y-text').value,
     timeoutMs: parseInt(document.getElementById('a11y-timeout').value) || 10000,
   };
-  await postAndShow('/v1/accessibility/action', body, 'a11y-result');
+  await postAndShow('/v1/accessibility/action', body, 'a11y-result', true);
 }
 
 // ─── Workflow ─────────────────────────────────────────────────────────────
@@ -398,7 +405,7 @@ async function installWorkflow() {
   let wfJson = document.getElementById('wf-json').value.trim();
   if (!wfJson) return alert('Enter workflow JSON');
   const body = { deviceId: currentDevice, name: 'Dashboard Workflow', workflowJson: wfJson };
-  await postAndShow('/v1/automation/workflow', body, 'wf-result');
+  await postAndShow('/v1/automation/workflow', body, 'wf-result', true);
 }
 
 async function runWorkflow() {
@@ -406,7 +413,7 @@ async function runWorkflow() {
   const wid = document.getElementById('wf-run-id').value.trim();
   if (!wid) return alert('Enter workflow ID');
   const body = { deviceId: currentDevice, workflowId: wid, vars: {} };
-  await postAndShow('/v1/automation/run', body, 'wf-result');
+  await postAndShow('/v1/automation/run', body, 'wf-result', true);
 }
 
 // ─── Raw command ──────────────────────────────────────────────────────────
@@ -416,7 +423,7 @@ async function sendRawCommand() {
   let payload = {};
   try { payload = JSON.parse(document.getElementById('cmd-payload').value); } catch(e) { return alert('Invalid JSON payload'); }
   const body = { deviceId: currentDevice, type: document.getElementById('cmd-type').value, payload };
-  await postAndShow('/v1/commands', body, 'cmd-result');
+  await postAndShow('/v1/commands', body, 'cmd-result', true);
 }
 
 // ─── Vision ───────────────────────────────────────────────────────────────
@@ -424,19 +431,19 @@ async function sendRawCommand() {
 async function sendVisionCmd(cmdType) {
   if (!currentDevice) return alert('Select a device first');
   const body = { deviceId: currentDevice, type: cmdType, payload: {} };
-  await postAndShow('/v1/commands', body, 'vision-result');
+  await postAndShow('/v1/commands', body, 'vision-result', true);
 }
 
 // ─── Shared fetch ─────────────────────────────────────────────────────────
 
-async function postAndShow(url, body, resultId) {
+async function postAndShow(url, body, resultId, useAdmin = false) {
   const el = document.getElementById(resultId);
   el.style.display = 'block';
   el.textContent = 'Sending…';
   try {
     const r = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: useAdmin ? adminHeaders() : { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     });
     const j = await r.json();

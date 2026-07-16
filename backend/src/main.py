@@ -56,6 +56,12 @@ async def get_device(
     return device
 
 
+async def require_admin(x_admin_token: str = Header(alias="X-Admin-Token", default="")) -> None:
+    """Dependency for admin-only endpoints. Requires X-Admin-Token header."""
+    if not x_admin_token or x_admin_token != settings.ADMIN_TOKEN:
+        raise HTTPException(status_code=401, detail="Admin token required")
+
+
 def ok(data: Any = None) -> dict:
     return {
         "ok": True,
@@ -198,6 +204,9 @@ async def get_config(
     device: Device = Depends(get_device),
     session: AsyncSession = Depends(get_session)
 ):
+    # Security: device can only request its own config
+    if deviceId != device.device_id:
+        raise HTTPException(status_code=403, detail="Cannot request config for another device")
     record = await session.get(ConfigRecord, deviceId)
     if record is None:
         record = ConfigRecord(device_id=deviceId, version=1, config_json=json.dumps(DEFAULT_CONFIG))
@@ -324,12 +333,18 @@ class CreateCommandRequest(BaseModel):
 @app.post("/v1/commands")
 async def create_command(
     body: CreateCommandRequest,
+    _: None = Depends(require_admin),
     session: AsyncSession = Depends(get_session)
 ):
     """Create a command for a device to execute. No device auth — admin endpoint."""
     device = await session.get(Device, body.deviceId)
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
+
+    # Sanitize command type: alphanumeric + underscore only
+    import re as _re
+    if not _re.match(r'^[A-Za-z0-9_]{1,64}$', body.type):
+        raise HTTPException(status_code=400, detail="Invalid command type: use alphanumeric and underscore only")
 
     cmd = CommandRecord(
         device_id=device.device_id,
@@ -416,6 +431,7 @@ class WorkflowPayload(BaseModel):
 @app.post("/v1/automation/workflow")
 async def create_workflow(
     body: WorkflowPayload,
+    _: None = Depends(require_admin),
     session: AsyncSession = Depends(get_session)
 ):
     """
@@ -448,6 +464,7 @@ class RunWorkflowPayload(BaseModel):
 @app.post("/v1/automation/run")
 async def run_workflow(
     body: RunWorkflowPayload,
+    _: None = Depends(require_admin),
     session: AsyncSession = Depends(get_session)
 ):
     """Sends a run_workflow command to a device (device must already have the workflow)."""
@@ -507,6 +524,7 @@ class AccessibilityActionRequest(BaseModel):
 @app.post("/v1/accessibility/action")
 async def create_accessibility_action(
     body: AccessibilityActionRequest,
+    _: None = Depends(require_admin),
     session: AsyncSession = Depends(get_session)
 ):
     """
