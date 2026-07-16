@@ -1,66 +1,165 @@
-# Personal Android Automation Agent — Technical Setup
+# Personal Android Automation Agent
 
-This repository is a **new technical setup** for an owner-authorized Android personal automation agent.
+An owner-authorized, on-device automation agent for Android. Observes signals (notifications, screen content, accessibility events) and executes workflows configured remotely. No root, no MDM — standard Android APIs only.
 
-The system is designed for one purpose: give the owner of an Android device a modular assistant that can observe permitted signals, understand app/screen context, run workflows, and execute actions using only official Android APIs and permissions manually granted by the user.
+## Quick Start
 
-## Core Constraints
+### Backend
 
-- No root.
-- No MDM.
-- No hidden bypasses.
-- No private app sandbox access.
-- No credential, password, banking, OTP, or protected-database extraction.
-- Only Android APIs officially available to normal apps.
-- Every sensitive permission must be granted manually by the device owner.
-- Every module must be configurable and disableable remotely.
+```bash
+cd backend
+pip install -r requirements.txt
+cp .env.example .env   # set SETUP_TOKEN
+uvicorn src.main:app --host 0.0.0.0 --port 9000
+# Dashboard: http://localhost:9000/
+```
 
-## Documentation Index
+### Android APK
 
-| Document | Purpose |
-|---|---|
-| [`docs/00_SYSTEM_OVERVIEW.md`](docs/00_SYSTEM_OVERVIEW.md) | System purpose, architecture, principles |
-| [`docs/01_ANDROID_PROJECT_SETUP.md`](docs/01_ANDROID_PROJECT_SETUP.md) | Android project setup, Gradle, package layout |
-| [`docs/02_MODULE_ARCHITECTURE.md`](docs/02_MODULE_ARCHITECTURE.md) | Module registry, lifecycle, contracts |
-| [`docs/03_PERMISSION_MANAGER.md`](docs/03_PERMISSION_MANAGER.md) | Permission handling and settings flows |
-| [`docs/04_DEVICE_MANAGER.md`](docs/04_DEVICE_MANAGER.md) | Device identity, heartbeat, inventory, health |
-| [`docs/05_ACCESSIBILITY_ENGINE.md`](docs/05_ACCESSIBILITY_ENGINE.md) | Accessibility automation engine |
-| [`docs/06_VISION_OCR_ENGINE.md`](docs/06_VISION_OCR_ENGINE.md) | Screen capture, OCR, vision, screen analyzer |
-| [`docs/07_NOTIFICATION_ENGINE.md`](docs/07_NOTIFICATION_ENGINE.md) | Notification listener and app-specific parsing |
-| [`docs/08_AUTOMATION_ENGINE.md`](docs/08_AUTOMATION_ENGINE.md) | Trigger → condition → action workflows |
-| [`docs/09_SCHEDULER_AND_JOBS.md`](docs/09_SCHEDULER_AND_JOBS.md) | WorkManager, AlarmManager, retries, priorities |
-| [`docs/10_APP_FILE_NETWORK_MANAGERS.md`](docs/10_APP_FILE_NETWORK_MANAGERS.md) | App controller, file manager, network manager |
-| [`docs/11_LOCAL_DATABASE.md`](docs/11_LOCAL_DATABASE.md) | Room schema and persistent queues |
-| [`docs/12_AI_ENGINE.md`](docs/12_AI_ENGINE.md) | AI context, action planning, validation |
-| [`docs/13_REMOTE_CONFIG.md`](docs/13_REMOTE_CONFIG.md) | Remote feature flags, intervals, limits |
-| [`docs/14_SERVER_API.md`](docs/14_SERVER_API.md) | REST/WebSocket backend API specification |
-| [`docs/15_SECURITY_PRIVACY.md`](docs/15_SECURITY_PRIVACY.md) | Safety, privacy, permissions, audit controls |
-| [`docs/16_IMPLEMENTATION_ROADMAP.md`](docs/16_IMPLEMENTATION_ROADMAP.md) | Build phases and acceptance criteria |
+1. Set `SERVER_BASE_URL` and `SETUP_TOKEN` in `android/app/build.gradle` (or `.env`)
+2. `cd android && gradle assembleDebug`
+3. Install `app/build/outputs/apk/debug/app-debug.apk`
+4. Open app → grant permissions when prompted → agent starts automatically
 
-## Target Stack
+## Architecture
 
-| Layer | Recommended Technology |
-|---|---|
-| Android language | Kotlin preferred, Java acceptable |
-| Android architecture | MVVM + repository pattern + module registry |
-| Async | Kotlin Coroutines / WorkManager; Java Executor fallback |
-| Local database | Room |
-| HTTP | Retrofit + OkHttp |
-| WebSocket | OkHttp WebSocket |
-| OCR | ML Kit Text Recognition or Tesseract |
-| Vision | MediaProjection + ImageReader + optional server AI |
-| Backend | Node.js/Fastify or Express, or Kotlin/Spring if preferred |
-| API format | JSON REST + WebSocket events |
-| Auth | Device enrollment token + per-device API key |
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Android App (com.personal.agent)                           │
+│                                                             │
+│  AgentForegroundService ──► ModuleRegistry                  │
+│                                 │                           │
+│         ┌───────────────────────┼───────────────────────┐   │
+│         ▼           ▼           ▼           ▼           ▼   │
+│   DeviceMgr  PermMgr  NotifEngine  A11yEngine  VisionEngine │
+│                          │            │              │       │
+│                     NotifListener  A11yService  ScreenRecord │
+│                          │            │                      │
+│                     ─────┴────────────┘                      │
+│                          ▼                                   │
+│                    AutomationEngine ◄── WorkflowRunner       │
+│                          │                                   │
+│                    JobExecutor  WorkflowRepository           │
+│                                                              │
+│  WorkManager: Heartbeat · ConfigSync · LogUpload ·           │
+│               CommandPoll · Cleanup · NotificationUpload     │
+│                                                              │
+│  Room DB: device · jobs · automation · notifications ·       │
+│           screens · ocr · vision · logs · commands ·         │
+│           permissions · config                               │
+└──────────────────────────────────┬──────────────────────────┘
+                                   │ HTTPS + WebSocket
+┌──────────────────────────────────▼──────────────────────────┐
+│  FastAPI Backend (port 9000)                                 │
+│                                                              │
+│  REST API /v1/                                               │
+│    device/register · heartbeat · config · commands · ack     │
+│    logs · notifications · vision/analyze · ocr              │
+│    automation/workflow · automation/run · status             │
+│    accessibility/action                                      │
+│                                                              │
+│  WebSocket /ws/{device_id}   — real-time dashboard push      │
+│  WebSocket /ws/admin          — all-device stream            │
+│                                                              │
+│  Dashboard /                  — single-file dark-theme SPA   │
+│    Live device list · Stats · Module health · Log stream     │
+│    Accessibility actions · Workflow builder · Raw commands   │
+└──────────────────────────────────────────────────────────────┘
+```
 
-## Final Behavior Goal
+## Implementation Status
 
-The agent should act as a personal assistant:
+| Phase | Description | Status |
+|-------|-------------|--------|
+| 1 | Foundation: skeleton, Room DB (12 tables), workers stub, backend API | ✅ Done |
+| 2 | Workers wired: heartbeat, config sync, log upload, command poll, enrollment | ✅ Done |
+| 3 | Job queue (priority + exponential backoff), command dispatch, DeviceManagerModule | ✅ Done |
+| 4 | Notification Engine: parser (WhatsApp/Telegram/Gmail/SMS/generic), queue, upload | ✅ Done |
+| 5 | Accessibility Engine: tree builder, node finder, action executor, gesture engine | ✅ Done |
+| 6 | Vision/OCR Engine: MediaProjection capture, ML Kit OCR, screen classifier | ✅ Done |
+| 7 | Automation Engine: workflow DSL, trigger/condition/action, WorkflowRunner | ✅ Done |
+| 8 | Dashboard + WebSocket real-time push | ✅ Done |
+| 9 | Hardening: pytest suite, unit tests, ProGuard, CI, error handlers | ✅ Done |
 
-1. observes permitted device signals;
-2. understands screen and notification context;
-3. chooses the next action through rules or AI;
-4. executes only permitted actions through official Android APIs;
-5. logs each decision and result;
-6. retries safely;
-7. stays modular enough to add new automations without changing the foundation.
+## Modules
+
+| Module ID | Class | Trigger |
+|-----------|-------|---------|
+| `device_manager` | `DeviceManagerModule` | Always enabled |
+| `permission_manager` | `PermissionManager` | Always enabled |
+| `notification_engine` | `NotificationEngine` | Requires notification listener access |
+| `accessibility_engine` | `AccessibilityEngine` | Requires accessibility service |
+| `vision_engine` | `VisionEngine` | Requires MediaProjection |
+| `automation_engine` | `AutomationEngine` | Always enabled |
+
+## Workflow DSL Example
+
+```json
+{
+  "id": "wf-whatsapp-reply",
+  "name": "Auto-open WhatsApp on OTP",
+  "enabled": true,
+  "version": 1,
+  "trigger": {
+    "type": "NOTIFICATION_RECEIVED",
+    "packageName": "com.whatsapp",
+    "bodyContains": "OTP"
+  },
+  "conditions": [
+    { "type": "NETWORK_WIFI" },
+    { "type": "BATTERY_ABOVE", "intValue": 20 }
+  ],
+  "steps": [
+    { "id": "s1", "action": { "type": "HOME" }, "onFail": "CONTINUE" },
+    { "id": "s2", "action": { "type": "LAUNCH_APP", "packageName": "com.whatsapp" }, "onFail": "ABORT" },
+    { "id": "s3", "action": { "type": "WAIT_TEXT", "targetText": "Chats", "timeoutMs": 5000 }, "onFail": "ABORT" },
+    { "id": "s4", "action": { "type": "OCR_TEXT" }, "onFail": "CONTINUE" },
+    { "id": "s5", "action": { "type": "LOG_EVENT", "logMessage": "OCR: {{ocr_text}}" }, "onFail": "CONTINUE" }
+  ],
+  "createdAt": 0,
+  "updatedAt": 0
+}
+```
+
+## API Endpoints
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | /health | None | Server health |
+| POST | /v1/device/register | Setup token | Enroll device |
+| POST | /v1/heartbeat | Device | Send health snapshot |
+| GET | /v1/config | Device | Fetch remote config |
+| GET | /v1/commands | Device | Poll pending commands |
+| POST | /v1/ack | Device | ACK command result |
+| POST | /v1/logs | Device | Upload log batch |
+| POST | /v1/notification | Device | Upload notification |
+| POST | /v1/vision/analyze | Device | Upload vision result |
+| POST | /v1/ocr | Device | Upload OCR result |
+| POST | /v1/commands | Admin | Send command to device |
+| POST | /v1/accessibility/action | Admin | Send accessibility action |
+| POST | /v1/automation/workflow | Admin | Install workflow |
+| POST | /v1/automation/run | Admin | Trigger workflow run |
+| GET | /v1/automation/workflows | Admin | List workflows |
+| GET | /v1/notifications | Device | Recent notifications |
+| GET | /v1/status | None | Server + device list |
+| WS | /ws/{device_id} | None | Real-time events stream |
+| WS | /ws/admin | None | All-device event stream |
+
+## CI
+
+GitHub Actions (`.github/workflows/ci.yml`):
+- **backend-test**: pytest on every push, in-memory SQLite
+- **android-build**: `gradle assembleDebug`, uploads APK artifact
+- **backend-lint**: ruff (advisory)
+
+## Running Tests
+
+```bash
+# Backend
+cd backend
+PYTHONPATH=. python -m pytest tests/ -v
+
+# Android unit tests (JVM, no emulator needed)
+cd android
+gradle test --no-daemon
+```

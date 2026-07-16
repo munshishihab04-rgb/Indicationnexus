@@ -14,6 +14,7 @@ from contextlib import asynccontextmanager
 from src.database import init_db, get_session, Device, HeartbeatLog, ConfigRecord, CommandRecord, LogRecord
 from src.settings import settings
 from src.ws_manager import ws_manager
+from src.middleware import register_handlers
 
 
 # ─── Lifespan ─────────────────────────────────────────────────────────────────
@@ -35,6 +36,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+register_handlers(app)
 
 
 # ─── Auth helper ──────────────────────────────────────────────────────────────
