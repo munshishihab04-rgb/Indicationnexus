@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_dark"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <!-- Header -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Personal Agent"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="@color/white"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Agent status and controls"
+            android:textSize="13sp"
+            android:textColor="@color/text_secondary"
+            android:layout_marginBottom="24dp" />
+
+        <!-- Agent controls -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="24dp">
+
+            <Button
+                android:id="@+id/btnStartAgent"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:text="Start Agent"
+                android:backgroundTint="@color/accent_purple"
+                android:textColor="@color/white" />
+
+            <Button
+                android:id="@+id/btnStopAgent"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:text="Stop Agent"
+                android:backgroundTint="@color/surface"
+                android:textColor="@color/text_secondary" />
+        </LinearLayout>
+
+        <!-- Section: Permissions -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="PERMISSIONS"
+            android:textSize="11sp"
+            android:textColor="@color/text_secondary"
+            android:letterSpacing="0.1"
+            android:layout_marginBottom="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@color/surface"
+            android:padding="16dp"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:id="@+id/tvStatusNotifications"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="— Notifiche"
+                android:textColor="@color/white"
+                android:textSize="14sp"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:id="@+id/tvStatusNotificationListener"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="— Notification Listener"
+                android:textColor="@color/white"
+                android:textSize="14sp"
+                android:layout_marginBottom="8dp" />
+
+            <Button
+                android:id="@+id/btnOpenNotificationAccess"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:text="→ Apri impostazioni notifiche"
+                android:backgroundTint="@color/accent_teal"
+                android:textColor="@color/bg_dark"
+                android:textSize="12sp"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:id="@+id/tvStatusAccessibility"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="— Accessibility"
+                android:textColor="@color/white"
+                android:textSize="14sp"
+                android:layout_marginBottom="8dp" />
+
+            <Button
+                android:id="@+id/btnOpenAccessibilityAccess"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:text="→ Apri impostazioni accessibilità"
+                android:backgroundTint="@color/accent_teal"
+                android:textColor="@color/bg_dark"
+                android:textSize="12sp"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:id="@+id/tvStatusBattery"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="— Ottimizzazione batteria"
+                android:textColor="@color/white"
+                android:textSize="14sp"
+                android:layout_marginBottom="8dp" />
+
+            <Button
+                android:id="@+id/btnOpenBatteryOpt"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:text="→ Escludi ottimizzazione batteria"
+                android:backgroundTint="@color/accent_teal"
+                android:textColor="@color/bg_dark"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- Footer note -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="The agent runs as a foreground service. All permissions are granted manually by you in Android Settings."
+            android:textSize="12sp"
+            android:textColor="@color/text_secondary"
+            android:lineSpacingMultiplier="1.4"
+            android:layout_marginTop="8dp" />
+
+    </LinearLayout>
+</ScrollView>
