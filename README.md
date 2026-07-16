@@ -1,67 +1,66 @@
-# Indication Nexus Documentation
+# Personal Android Automation Agent — Technical Setup
 
-This repository contains the structured technical documentation for **Nexus**, an Android + Node.js server/dashboard system for transparent, permission-based device backup, synchronization, telemetry, and diagnostics.
+This repository is a **new technical setup** for an owner-authorized Android personal automation agent.
 
-> Source analyzed: `/opt/data/nexus-monorepo-github`  
-> Target GitHub repository: `munshishihab04-rgb/Indicationnexus`  
-> Documentation generated from the real Android and server implementation, not from assumptions.
+The system is designed for one purpose: give the owner of an Android device a modular assistant that can observe permitted signals, understand app/screen context, run workflows, and execute actions using only official Android APIs and permissions manually granted by the user.
+
+## Core Constraints
+
+- No root.
+- No MDM.
+- No hidden bypasses.
+- No private app sandbox access.
+- No credential, password, banking, OTP, or protected-database extraction.
+- Only Android APIs officially available to normal apps.
+- Every sensitive permission must be granted manually by the device owner.
+- Every module must be configurable and disableable remotely.
 
 ## Documentation Index
 
 | Document | Purpose |
 |---|---|
-| [`docs/OVERVIEW.md`](docs/OVERVIEW.md) | Product overview, scope, architecture summary |
-| [`docs/SPECIFICATION.md`](docs/SPECIFICATION.md) | Full target Nexus Personal Agent specification |
-| [`docs/COVERAGE_MATRIX.md`](docs/COVERAGE_MATRIX.md) | Implemented vs missing coverage against the specification |
-| [`docs/PROJECT_STRUCTURE.md`](docs/PROJECT_STRUCTURE.md) | Repository layout and important files |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Android ↔ server ↔ dashboard architecture |
-| [`docs/FEATURES.md`](docs/FEATURES.md) | Complete implemented feature list |
-| [`docs/API.md`](docs/API.md) | REST API and WebSocket endpoint documentation |
-| [`docs/ANDROID_APP.md`](docs/ANDROID_APP.md) | Android app modules, services, permissions, sync logic |
-| [`docs/SERVER.md`](docs/SERVER.md) | Node.js backend, storage, auth, media handling |
-| [`docs/DATABASE_STORAGE.md`](docs/DATABASE_STORAGE.md) | File-based persistence model and data layout |
-| [`docs/DASHBOARD.md`](docs/DASHBOARD.md) | Dashboard files and frontend responsibilities |
-| [`docs/SECURITY_PRIVACY.md`](docs/SECURITY_PRIVACY.md) | Security model, privacy boundaries, sensitive capabilities |
-| [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Runtime configuration and deployment guide |
-| [`docs/TESTING.md`](docs/TESTING.md) | Existing tests and verification checklist |
-| [`docs/CHANGELOG.md`](docs/CHANGELOG.md) | Implementation state and notable fixes |
+| [`docs/00_SYSTEM_OVERVIEW.md`](docs/00_SYSTEM_OVERVIEW.md) | System purpose, architecture, principles |
+| [`docs/01_ANDROID_PROJECT_SETUP.md`](docs/01_ANDROID_PROJECT_SETUP.md) | Android project setup, Gradle, package layout |
+| [`docs/02_MODULE_ARCHITECTURE.md`](docs/02_MODULE_ARCHITECTURE.md) | Module registry, lifecycle, contracts |
+| [`docs/03_PERMISSION_MANAGER.md`](docs/03_PERMISSION_MANAGER.md) | Permission handling and settings flows |
+| [`docs/04_DEVICE_MANAGER.md`](docs/04_DEVICE_MANAGER.md) | Device identity, heartbeat, inventory, health |
+| [`docs/05_ACCESSIBILITY_ENGINE.md`](docs/05_ACCESSIBILITY_ENGINE.md) | Accessibility automation engine |
+| [`docs/06_VISION_OCR_ENGINE.md`](docs/06_VISION_OCR_ENGINE.md) | Screen capture, OCR, vision, screen analyzer |
+| [`docs/07_NOTIFICATION_ENGINE.md`](docs/07_NOTIFICATION_ENGINE.md) | Notification listener and app-specific parsing |
+| [`docs/08_AUTOMATION_ENGINE.md`](docs/08_AUTOMATION_ENGINE.md) | Trigger → condition → action workflows |
+| [`docs/09_SCHEDULER_AND_JOBS.md`](docs/09_SCHEDULER_AND_JOBS.md) | WorkManager, AlarmManager, retries, priorities |
+| [`docs/10_APP_FILE_NETWORK_MANAGERS.md`](docs/10_APP_FILE_NETWORK_MANAGERS.md) | App controller, file manager, network manager |
+| [`docs/11_LOCAL_DATABASE.md`](docs/11_LOCAL_DATABASE.md) | Room schema and persistent queues |
+| [`docs/12_AI_ENGINE.md`](docs/12_AI_ENGINE.md) | AI context, action planning, validation |
+| [`docs/13_REMOTE_CONFIG.md`](docs/13_REMOTE_CONFIG.md) | Remote feature flags, intervals, limits |
+| [`docs/14_SERVER_API.md`](docs/14_SERVER_API.md) | REST/WebSocket backend API specification |
+| [`docs/15_SECURITY_PRIVACY.md`](docs/15_SECURITY_PRIVACY.md) | Safety, privacy, permissions, audit controls |
+| [`docs/16_IMPLEMENTATION_ROADMAP.md`](docs/16_IMPLEMENTATION_ROADMAP.md) | Build phases and acceptance criteria |
 
-## High-level System
+## Target Stack
 
-Nexus has three main parts:
-
-1. **Android app** (`com.nexus.app`)  
-   Runs a foreground sync service, collects user-authorized data through Android platform APIs, sends data to the server, and accepts a small set of whitelisted commands.
-
-2. **Node.js backend**  
-   Express 5 server with token authentication, JSON/file-based persistence, media upload support, thumbnail generation, command queues, ACK tracking, WebSocket broadcasting, statistics, ZIP export, and optional AI context analysis.
-
-3. **Dashboard**  
-   Static web dashboard served from the backend for device status, media, GPS, SMS/call views, notifications/events, and operational monitoring.
-
-## Safety and Privacy Position
-
-This documentation describes the implementation for legitimate, transparent, owner-authorized backup and diagnostics. It does **not** document stealth installation, hidden operation, credential theft, OTP extraction, bypass of Android protections, or unauthorized monitoring.
-
-The Android app requests explicit Android permissions and uses visible components such as a foreground service notification, notification listener settings, accessibility settings, and storage access framework.
-
-## Quick Runtime Summary
-
-| Component | Runtime |
+| Layer | Recommended Technology |
 |---|---|
-| Android app package | `com.nexus.app` |
-| Android min/target/compile SDK | min 26, target 34, compile 34 |
-| App version analyzed | `2.1` / versionCode `12` |
-| Backend | Node.js + Express `5.2.1` |
-| Backend default port | `3000` |
-| Backend auth | `X-Token` header or `?token=` query |
-| Storage | JSON files + uploaded files under `NEXUS_DATA_DIR` |
-| Dashboard route | `/dashboard` plus SPA fallback |
+| Android language | Kotlin preferred, Java acceptable |
+| Android architecture | MVVM + repository pattern + module registry |
+| Async | Kotlin Coroutines / WorkManager; Java Executor fallback |
+| Local database | Room |
+| HTTP | Retrofit + OkHttp |
+| WebSocket | OkHttp WebSocket |
+| OCR | ML Kit Text Recognition or Tesseract |
+| Vision | MediaProjection + ImageReader + optional server AI |
+| Backend | Node.js/Fastify or Express, or Kotlin/Spring if preferred |
+| API format | JSON REST + WebSocket events |
+| Auth | Device enrollment token + per-device API key |
 
-## Setup Pointers
+## Final Behavior Goal
 
-See:
+The agent should act as a personal assistant:
 
-- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for server runtime configuration.
-- [`docs/ANDROID_APP.md`](docs/ANDROID_APP.md) for Android permissions and service behavior.
-- [`docs/API.md`](docs/API.md) for backend endpoints.
+1. observes permitted device signals;
+2. understands screen and notification context;
+3. chooses the next action through rules or AI;
+4. executes only permitted actions through official Android APIs;
+5. logs each decision and result;
+6. retries safely;
+7. stays modular enough to add new automations without changing the foundation.

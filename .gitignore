@@ -1,23 +1,23 @@
-# Runtime data and secrets
+# Secrets and local runtime data
 .env
 .env.*
 *.log
-node_modules/
-data/
-media/
-audio/
-screenshots/
-thumbs/
-zips/
+local.properties
 
-# Android/build artifacts
-.gradle/
+# Node / backend
+node_modules/
+dist/
 build/
-app/build/
+data/
+uploads/
+
+# Android
+.gradle/
+**/build/
 *.apk
 *.aab
 
-# OS/editor
+# IDE / OS
 .DS_Store
 .idea/
 .vscode/
